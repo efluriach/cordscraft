@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CordsCraft</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --bg2:#161b22; --bg3:#21262d; --border:#30363d;
+    --green:#3fb950; --green-dim:#2d5a27; --yellow:#d4a017;
+    --text:#e6edf3; --text-dim:#8b949e; --red:#f85149; --blue:#58a6ff;
+    --purple:#c980ff; --orange:#ff6b35;
+    --px:2px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:10px;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:
+    radial-gradient(1px 1px at 15% 12%,#fff4 0%,transparent 0%),
+    radial-gradient(1px 1px at 55% 28%,#fff3 0%,transparent 0%),
+    radial-gradient(1px 1px at 82% 8%,#fff4 0%,transparent 0%),
+    radial-gradient(1px 1px at 8% 68%,#fff3 0%,transparent 0%),
+    radial-gradient(1px 1px at 42% 82%,#fff4 0%,transparent 0%),
+    radial-gradient(1px 1px at 91% 55%,#fff3 0%,transparent 0%);
+    pointer-events:none;z-index:0;}
+
+  .screen{display:none;position:relative;z-index:1;}
+  .screen.active{display:block;}
+
+  header{background:var(--bg2);border-bottom:var(--px) solid var(--green);padding:14px 20px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    position:sticky;top:0;z-index:100;box-shadow:0 var(--px) 0 var(--green-dim);}
+  .logo{font-size:13px;color:var(--green);text-shadow:var(--px) var(--px) 0 var(--green-dim);}
+  .logo span{color:var(--yellow);}
+  #sync-indicator{font-size:7px;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);}
+  .dot.online{background:var(--green);}
+
+  /* BUTTONS */
+  .btn{background:var(--bg3);color:var(--text);border:var(--px) solid var(--border);
+    padding:10px 16px;font-family:'Press Start 2P',monospace;font-size:9px;
+    cursor:pointer;transition:background .1s,transform .1s;outline:none;
+    display:inline-flex;align-items:center;gap:8px;}
+  .btn:hover{background:var(--border);transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px);}
+  .btn.green{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+  .btn.green:hover{background:#3a7a30;}
+  .btn.red{background:#3a1515;border-color:var(--red);color:var(--red);}
+  .btn.red:hover{background:#5a2020;}
+  .btn.purple{background:#2a1040;border-color:var(--purple);color:var(--purple);}
+  .btn.purple:hover{background:#3a1a60;}
+  .btn.blue{background:#102a40;border-color:var(--blue);color:var(--blue);}
+  .btn.blue:hover{background:#1a3a60;}
+
+  main{padding:28px 20px;max-width:1100px;margin:0 auto;}
+
+  /* STATUS */
+  #status-bar{text-align:center;padding:60px 20px;color:var(--text-dim);font-size:8px;line-height:2.5;}
+  #status-bar .spin{font-size:28px;display:block;margin-bottom:14px;animation:spin 1.2s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* HOME */
+  #home-title{text-align:center;color:var(--green);font-size:11px;margin-bottom:8px;text-shadow:var(--px) var(--px) 0 var(--green-dim);}
+  #home-sub{text-align:center;color:var(--text-dim);font-size:8px;margin-bottom:32px;line-height:1.8;}
+  #folders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}
+
+  .folder-card{background:var(--bg2);border:var(--px) solid var(--border);padding:20px 16px 16px;
+    cursor:pointer;transition:border-color .15s,transform .1s;position:relative;}
+  .folder-card:hover{border-color:var(--green);transform:translateY(-2px);}
+  .folder-card:active{transform:translateY(0);}
+  .folder-icon{font-size:28px;display:block;margin-bottom:10px;}
+  .folder-name{color:var(--text);font-size:9px;word-break:break-word;line-height:1.6;margin-bottom:8px;}
+  .folder-meta{color:var(--text-dim);font-size:7px;line-height:2;}
+  .folder-delete{position:absolute;top:8px;right:8px;background:none;border:none;
+    color:var(--text-dim);font-size:14px;cursor:pointer;padding:2px 5px;line-height:1;transition:color .1s;}
+  .folder-delete:hover{color:var(--red);}
+  .folder-new{background:var(--bg2);border:var(--px) dashed var(--border);padding:20px 16px;
+    cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;color:var(--text-dim);font-size:8px;transition:border-color .15s,color .15s;min-height:120px;}
+  .folder-new:hover{border-color:var(--green);color:var(--green);}
+  .folder-new .plus{font-size:24px;}
+
+  /* TABS */
+  #back-btn{margin-bottom:20px;}
+  #folder-view-title{color:var(--green);font-size:12px;margin-bottom:4px;text-shadow:var(--px) var(--px) 0 var(--green-dim);}
+  #folder-view-sub{color:var(--text-dim);font-size:7px;margin-bottom:20px;}
+
+  .tabs{display:flex;gap:0;margin-bottom:28px;border-bottom:var(--px) solid var(--border);}
+  .tab{padding:10px 18px;font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;
+    color:var(--text-dim);background:none;border:none;border-bottom:3px solid transparent;
+    transition:color .15s,border-color .15s;margin-bottom:-2px;}
+  .tab:hover{color:var(--text);}
+  .tab.active-tab{color:var(--green);border-bottom-color:var(--green);}
+  .tab-panel{display:none;}
+  .tab-panel.active-panel{display:block;}
+
+  .panel-actions{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+
+  /* COORDS TABLE */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:8px;}
+  thead{background:var(--bg3);}
+  th{padding:12px 10px;text-align:left;color:var(--green);border-bottom:var(--px) solid var(--green-dim);white-space:nowrap;}
+  td{padding:11px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+  tr:hover td{background:rgba(63,185,80,.05);}
+  .dim-tag{display:inline-block;padding:3px 7px;font-size:7px;border:1px solid;}
+  .dim-overworld{color:var(--green);border-color:var(--green-dim);background:rgba(63,185,80,.1);}
+  .dim-nether{color:var(--orange);border-color:#7a3010;background:rgba(255,107,53,.1);}
+  .dim-end{color:var(--purple);border-color:#5a2080;background:rgba(201,128,255,.1);}
+  .coord-xyz{color:var(--blue);font-size:8px;white-space:nowrap;}
+  .coord-y{color:var(--yellow);}
+  .cord-name-cell{display:flex;align-items:center;gap:8px;}
+  .cord-icon{font-size:13px;}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;}
+
+  /* PROJECTS GRID */
+  #projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+
+  .project-card{background:var(--bg2);border:var(--px) solid var(--border);padding:18px;position:relative;
+    transition:border-color .15s;}
+  .project-card:hover{border-color:var(--purple);}
+
+  .project-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;}
+  .project-title{color:var(--purple);font-size:9px;line-height:1.6;word-break:break-word;}
+  .project-actions{display:flex;gap:4px;flex-shrink:0;}
+  .project-btn{background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;
+    padding:2px 4px;line-height:1;transition:color .1s;}
+  .project-btn.edit:hover{color:var(--blue);}
+  .project-btn.del:hover{color:var(--red);}
+
+  .project-type-tag{display:inline-block;padding:3px 8px;font-size:7px;border:1px solid var(--yellow);
+    color:var(--yellow);background:rgba(212,160,23,.1);margin-bottom:10px;}
+
+  .status-toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    padding:5px 10px;border:1px solid var(--border);font-family:'Press Start 2P',monospace;
+    font-size:7px;background:var(--bg3);color:var(--text-dim);transition:all .15s;user-select:none;margin-bottom:10px;}
+  .status-toggle:hover{border-color:var(--text-dim);}
+  .status-toggle.done{border-color:var(--green);color:var(--green);background:rgba(63,185,80,.1);}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:background .15s;}
+  .status-toggle.done .status-dot{background:var(--green);}
+  .project-card.is-done{border-color:var(--green-dim);opacity:.75;}
+  .project-card.is-done .project-title{text-decoration:line-through;color:var(--text-dim);}
+
+  .project-row{font-size:7px;line-height:1.9;color:var(--text-dim);display:flex;gap:8px;margin-bottom:4px;align-items:flex-start;}
+  .project-row-label{color:var(--text-dim);flex-shrink:0;min-width:70px;}
+  .project-row-val{color:var(--text);word-break:break-word;}
+  .project-link{color:var(--blue);text-decoration:none;font-size:7px;}
+  .project-link:hover{text-decoration:underline;}
+
+  .project-materials{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+  .project-materials-title{font-size:7px;color:var(--text-dim);margin-bottom:6px;}
+  .mat-list{display:flex;flex-wrap:wrap;gap:5px;}
+  .mat-tag{background:var(--bg3);border:1px solid var(--border);padding:3px 8px;font-size:7px;color:var(--text);}
+
+  /* EMPTY */
+  .empty-state{text-align:center;padding:48px 20px;color:var(--text-dim);font-size:8px;line-height:2.2;border:var(--px) dashed var(--border);}
+  .empty-state .big{font-size:36px;display:block;margin-bottom:14px;}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+    align-items:flex-start;justify-content:center;padding:20px 0;overflow-y:auto;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--bg2);border:var(--px) solid var(--green);padding:28px 24px;
+    width:min(460px,94vw);box-shadow:4px 4px 0 var(--green-dim);margin:auto;}
+  .modal.purple-modal{border-color:var(--purple);box-shadow:4px 4px 0 #3a1060;}
+  .modal h3{font-size:10px;margin-bottom:20px;text-shadow:1px 1px 0 var(--green-dim);}
+  .modal.purple-modal h3{color:var(--purple);text-shadow:1px 1px 0 #3a1060;}
+  .modal:not(.purple-modal) h3{color:var(--green);}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;color:var(--text-dim);font-size:8px;margin-bottom:7px;}
+  .field input,.field select,.field textarea{width:100%;background:var(--bg);color:var(--text);
+    border:var(--px) solid var(--border);padding:10px 12px;
+    font-family:'Press Start 2P',monospace;font-size:9px;outline:none;transition:border-color .15s;resize:vertical;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green);}
+  .modal.purple-modal .field input:focus,
+  .modal.purple-modal .field select:focus,
+  .modal.purple-modal .field textarea:focus{border-color:var(--purple);}
+  .field select option{background:var(--bg);}
+  .field small{display:block;color:var(--text-dim);font-size:7px;margin-top:5px;line-height:1.6;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap;}
+
+  /* TOAST */
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--green-dim);border:var(--px) solid var(--green);color:var(--green);
+    padding:10px 20px;font-family:'Press Start 2P',monospace;font-size:8px;
+    transition:transform .25s;z-index:999;white-space:nowrap;}
+  #toast.show{transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:600px){
+    .logo{font-size:10px;} #home-title{font-size:9px;} th,td{padding:9px 7px;}
+    .tab{padding:8px 12px;font-size:7px;}
+    #projects-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⛏ Cords<span>Craft</span></div>
+  <div id="sync-indicator"><div class="dot" id="dot"></div><span id="sync-txt">Conectando…</span></div>
+</header>
+
+<!-- ══ HOME ══ -->
+<div id="screen-home" class="screen active">
+  <main>
+    <div id="status-bar"><span class="spin">⚙</span>Conectando con Firebase…</div>
+    <div id="home-content" style="display:none">
+      <p id="home-title">— Mis Mundos —</p>
+      <p id="home-sub">Coordenadas y proyectos compartidos en tiempo real</p>
+      <div id="folders-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ══ FOLDER VIEW ══ -->
+<div id="screen-folder" class="screen">
+  <main>
+    <button class="btn" id="back-btn">← Volver</button>
+    <p id="folder-view-title"></p>
+    <p id="folder-view-sub"></p>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active-tab" data-tab="tab-cords">📍 Coordenadas</button>
+      <button class="tab" data-tab="tab-projects">🏗 Proyectos</button>
+    </div>
+
+    <!-- TAB: Coordenadas -->
+    <div class="tab-panel active-panel" id="tab-cords">
+      <div class="panel-actions">
+        <button class="btn green" id="add-cord-btn">＋ Guardar coordenada</button>
+      </div>
+      <div class="table-wrap">
+        <table id="cords-table">
+          <thead><tr><th>#</th><th>Lugar</th><th>X</th><th>Y</th><th>Z</th><th>Dimensión</th><th>Notas</th><th></th></tr></thead>
+          <tbody id="cords-body"></tbody>
+        </table>
+      </div>
+      <div id="empty-cords" class="empty-state" style="display:none">
+        <span class="big">🗺</span>No hay coordenadas todavía.<br>
+        Pulsa <strong style="color:var(--green)">＋ Guardar coordenada</strong> para añadir la primera.
+      </div>
+    </div>
+
+    <!-- TAB: Proyectos -->
+    <div class="tab-panel" id="tab-projects">
+      <div class="panel-actions">
+        <button class="btn purple" id="add-project-btn">＋ Nuevo proyecto</button>
+      </div>
+      <div id="projects-grid"></div>
+      <div id="empty-projects" class="empty-state" style="display:none">
+        <span class="big">🏗</span>No hay proyectos todavía.<br>
+        Pulsa <strong style="color:var(--purple)">＋ Nuevo proyecto</strong> para añadir el primero.
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══ MODAL: Nuevo mundo ══ -->
+<div class="modal-overlay" id="modal-folder">
+  <div class="modal">
+    <h3>📁 Nuevo Mundo</h3>
+    <div class="field"><label>Nombre del mundo</label>
+      <input id="folder-name-input" type="text" placeholder="Mi Survival 2024" maxlength="30"></div>
+    <div class="field"><label>Icono</label>
+      <select id="folder-icon-input">
+        <option value="🌍">🌍 Overworld</option><option value="🔥">🔥 Nether</option>
+        <option value="🌌">🌌 The End</option><option value="🏔">🏔 Montañas</option>
+        <option value="🏝">🏝 Isla</option><option value="🌲">🌲 Bosque</option>
+        <option value="⚔">⚔ PvP</option><option value="🏰">🏰 Base</option>
+      </select></div>
+    <div class="modal-actions">
+      <button class="btn" id="cancel-folder">Cancelar</button>
+      <button class="btn green" id="confirm-folder">Crear mundo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Coordenada (Crear/Editar) ══ -->
+<div class="modal-overlay" id="modal-cord">
+  <div class="modal">
+    <h3 id="modal-cord-title">📍 Guardar Coordenada</h3>
+    <div class="field"><label>Icono</label>
+      <select id="cord-icon">
+        <optgroup label="Casas y Bases">
+          <option value="🏠">🏠 Casa</option>
+          <option value="🏡">🏡 Granja / Cabaña</option>
+          <option value="🏰">🏰 Castillo / Base</option>
+          <option value="🗼">🗼 Torre</option>
+          <option value="📦">📦 Almacén</option>
+          <option value="🛏">🛏 Spawn / Cama</option>
+        </optgroup>
+        <optgroup label="Estructuras">
+          <option value="🏘">🏘 Aldea</option>
+          <option value="🏛">🏛 Templo / Monumento</option>
+          <option value="⛩">⛩ Portal / Ruinas</option>
+          <option value="🏚">🏚 Mansión / Puesto</option>
+          <option value="🧱">🧱 Stronghold / Fortaleza</option>
+          <option value="🚢">🚢 Barco / Ciudad End</option>
+          <option value="⛏">⛏ Mina / Spawner</option>
+          <option value="💎">💎 Diamantes / Recursos</option>
+        </optgroup>
+        <optgroup label="Biomas">
+          <option value="🌲">🌲 Bosque / Taiga</option>
+          <option value="🌴">🌴 Jungla</option>
+          <option value="🌵">🌵 Desierto / Mesa</option>
+          <option value="🏔">🏔 Montañas / Picos</option>
+          <option value="❄️">❄️ Nieve / Hielo</option>
+          <option value="🍄">🍄 Isla Champiñón</option>
+          <option value="🌸">🌸 Cerezo (Cherry Grove)</option>
+          <option value="🌊">🌊 Océano / Playa</option>
+          <option value="🐸">🐸 Pantano / Manglar</option>
+          <option value="🕳">🕳 Cueva / Deep Dark</option>
+        </optgroup>
+        <optgroup label="Otros">
+          <option value="📍">📍 Marcador general</option>
+          <option value="⚡">⚡ Granja Redstone / XP</option>
+          <option value="💀">💀 Peligro / Muerte</option>
+        </optgroup>
+      </select></div>
+    <div class="field"><label>Nombre del lugar</label>
+      <input id="cord-name" type="text" placeholder="Diamantes nivel 12" maxlength="40"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="field" style="margin:0"><label>X</label><input id="cord-x" type="number" placeholder="0"></div>
+      <div class="field" style="margin:0"><label>Y</label><input id="cord-y" type="number" placeholder="64"></div>
+      <div class="field" style="margin:0"><label>Z</label><input id="cord-z" type="number" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Dimensión</label>
+      <select id="cord-dim">
+        <option value="overworld">🌍 Overworld</option>
+        <option value="nether">🔥 Nether</option>
+        <option value="end">🌌 The End</option>
+      </select></div>
+    <div class="field"><label>Notas <span style="color:var(--text-dim)">(opcional)</span></label>
+      <input id="cord-notes" type="text" placeholder="Mina abandonada al lado" maxlength="80"></div>
+    <div class="modal-actions">
+      <button class="btn" id="cancel-cord">Cancelar</button>
+      <button class="btn green" id="confirm-cord">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Proyecto (Crear/Editar) ══ -->
+<div class="modal-overlay" id="modal-project">
+  <div class="modal purple-modal">
+    <h3 id="modal-project-title">🏗 Nuevo Proyecto</h3>
+    <div class="field"><label>Título del proyecto</label>
+      <input id="proj-title" type="text" placeholder="Casa principal en spawn" maxlength="50"></div>
+    <div class="field"><label>Tipo de estructura</label>
+      <select id="proj-type">
+        <option value="Casa">🏠 Casa</option>
+        <option value="Granja">🌾 Granja</option>
+        <option value="Castillo">🏰 Castillo</option>
+        <option value="Mina">⛏ Mina</option>
+        <option value="Portal">🔮 Portal</option>
+        <option value="Almacén">📦 Almacén</option>
+        <option value="Torre">🗼 Torre</option>
+        <option value="Puente">🌉 Puente</option>
+        <option value="Ciudad">🏙 Ciudad</option>
+        <option value="Redstone">⚡ Redstone</option>
+        <option value="Decorativo">🎨 Decorativo</option>
+        <option value="Otro">🔧 Otro</option>
+      </select></div>
+    <div class="field"><label>Estado</label>
+      <select id="proj-done">
+        <option value="false">En progreso</option>
+        <option value="true">Acabado</option>
+      </select></div>
+    <div class="field"><label>Link de referencia <span style="color:var(--text-dim)">(opcional)</span></label>
+      <input id="proj-link" type="url" placeholder="https://youtube.com/...">
+      <small>Tutorial de YouTube, página de la build, etc.</small></div>
+    <div class="field"><label>Notas</label>
+      <textarea id="proj-notes" rows="3" placeholder="Descripción, detalles, medidas…" maxlength="300"></textarea></div>
+    <div class="field"><label>Materiales <span style="color:var(--text-dim)">(opcional)</span></label>
+      <input id="proj-mats" type="text" placeholder="Piedra, madera de roble, cristal…" maxlength="200">
+      <small>Separa los materiales con comas</small></div>
+    <div class="modal-actions">
+      <button class="btn" id="cancel-project">Cancelar</button>
+      <button class="btn purple" id="confirm-project">Guardar proyecto</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">✔ Guardado</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc,
+  addDoc, deleteDoc, updateDoc, onSnapshot,
+  query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCc-478wQPB_jCDx-9NVy0aGVUPiSPrb6M",
+  authDomain: "cords-minecraft.firebaseapp.com",
+  projectId: "cords-minecraft",
+  storageBucket: "cords-minecraft.firebasestorage.app",
+  messagingSenderId: "1088498355435",
+  appId: "1:1088498355435:web:31656641b1a64b9c5442ae"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── UTILS ──────────────────────────────
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dimLabel(d){ return d==='nether'?'🔥 Nether':d==='end'?'🌌 The End':'🌍 Overworld'; }
+
+let toastT=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function setOnline(on){
+  document.getElementById('dot').className='dot'+(on?' online':'');
+  document.getElementById('sync-txt').textContent=on?'En línea':'Sin conexión';
+}
+
+// ── STATE ──────────────────────────────
+let activeFolderId=null;
+let cordUnsub=null;
+let projUnsub=null;
+let editingCordId=null;
+let editingProjectId=null;
+let currentCords=[];
+let currentProjects=[];
+
+// ── TABS ───────────────────────────────
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active-tab'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active-panel'));
+    tab.classList.add('active-tab');
+    document.getElementById(tab.dataset.tab).classList.add('active-panel');
+  });
+});
+
+// ── HOME ───────────────────────────────
+document.getElementById('status-bar').style.display='none';
+document.getElementById('home-content').style.display='block';
+setOnline(true);
+
+const foldersQ=query(collection(db,'folders'),orderBy('createdAt','asc'));
+onSnapshot(foldersQ, snap=>{
+  renderFolders(snap.docs.map(d=>({id:d.id,...d.data()})));
+}, err=>{ setOnline(false); console.error(err); });
+
+function renderFolders(folders){
+  const grid=document.getElementById('folders-grid');
+  grid.innerHTML='';
+
+  folders.forEach(f=>{
+    const card=document.createElement('div');
+    card.className='folder-card';
+    card.innerHTML=`
+      <button class="folder-delete" data-id="${esc(f.id)}" title="Eliminar mundo">✕</button>
+      <span class="folder-icon">${esc(f.icon||'🌍')}</span>
+      <div class="folder-name">${esc(f.name)}</div>
+      <div class="folder-meta">
+        <span id="fc-${esc(f.id)}">… cords</span><br>
+        <span id="fp-${esc(f.id)}">… proyectos</span>
+      </div>`;
+    card.addEventListener('click',e=>{ if(e.target.classList.contains('folder-delete')) return; openFolder(f.id,f.name,f.icon||'🌍'); });
+    grid.appendChild(card);
+
+    onSnapshot(query(collection(db,'folders/'+f.id+'/cords')), s=>{
+      const el=document.getElementById('fc-'+f.id);
+      if(el){ const n=s.docs.length; el.textContent=n+' coord'+(n!==1?'s':''); }
+    });
+    onSnapshot(query(collection(db,'folders/'+f.id+'/projects')), s=>{
+      const el=document.getElementById('fp-'+f.id);
+      if(el){ const n=s.docs.length; el.textContent=n+' proyecto'+(n!==1?'s':''); }
+    });
+  });
+
+  const btn=document.createElement('div');
+  btn.className='folder-new';
+  btn.innerHTML='<span class="plus">＋</span><span>Nuevo Mundo</span>';
+  btn.addEventListener('click',openFolderModal);
+  grid.appendChild(btn);
+
+  grid.querySelectorAll('.folder-delete').forEach(b=>{
+    b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const fid=b.dataset.id;
+      if(!confirm('¿Eliminar este mundo?\nSe borrarán todas sus coordenadas y proyectos.')) return;
+      const [cs,ps]=await Promise.all([
+        new Promise(res=>{ const u=onSnapshot(collection(db,'folders/'+fid+'/cords'),s=>{u();res(s);}); }),
+        new Promise(res=>{ const u=onSnapshot(collection(db,'folders/'+fid+'/projects'),s=>{u();res(s);}); })
+      ]);
+      await Promise.all([
+        ...cs.docs.map(d=>deleteDoc(doc(db,'folders/'+fid+'/cords/'+d.id))),
+        ...ps.docs.map(d=>deleteDoc(doc(db,'folders/'+fid+'/projects/'+d.id)))
+      ]);
+      await deleteDoc(doc(db,'folders/'+fid));
+      toast('🗑 Mundo eliminado');
+    });
+  });
+}
+
+// ── MODAL CARPETA ──────────────────────
+function openFolderModal(){
+  document.getElementById('folder-name-input').value='';
+  document.getElementById('folder-icon-input').value='🌍';
+  document.getElementById('modal-folder').classList.add('open');
+  setTimeout(()=>document.getElementById('folder-name-input').focus(),50);
+}
+document.getElementById('cancel-folder').addEventListener('click',()=>document.getElementById('modal-folder').classList.remove('open'));
+document.getElementById('confirm-folder').addEventListener('click',createFolder);
+document.getElementById('folder-name-input').addEventListener('keydown',e=>e.key==='Enter'&&createFolder());
+async function createFolder(){
+  const name=document.getElementById('folder-name-input').value.trim();
+  if(!name){ document.getElementById('folder-name-input').focus(); return; }
+  const icon=document.getElementById('folder-icon-input').value;
+  await addDoc(collection(db,'folders'),{name,icon,createdAt:serverTimestamp()});
+  document.getElementById('modal-folder').classList.remove('open');
+  toast('📁 Mundo creado');
+}
+
+// ── FOLDER VIEW ────────────────────────
+function openFolder(fid,fname,ficon){
+  activeFolderId=fid;
+  document.getElementById('folder-view-title').textContent=ficon+'  '+fname;
+  document.getElementById('folder-view-sub').textContent='Sincronizado en tiempo real';
+  if(cordUnsub){ cordUnsub(); cordUnsub=null; }
+  if(projUnsub){ projUnsub(); projUnsub=null; }
+
+  // Reset tabs to cords
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active-tab'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active-panel'));
+  document.querySelector('[data-tab="tab-cords"]').classList.add('active-tab');
+  document.getElementById('tab-cords').classList.add('active-panel');
+
+  renderCordsTable([]);
+  renderProjectsGrid([]);
+  goTo('screen-folder');
+
+  cordUnsub=onSnapshot(
+    query(collection(db,'folders/'+fid+'/cords'),orderBy('createdAt','asc')),
+    snap=>{
+      currentCords = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderCordsTable(currentCords);
+    },
+    err=>console.error(err)
+  );
+  projUnsub=onSnapshot(
+    query(collection(db,'folders/'+fid+'/projects'),orderBy('createdAt','asc')),
+    snap=>{
+      currentProjects = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderProjectsGrid(currentProjects);
+    },
+    err=>console.error(err)
+  );
+}
+
+document.getElementById('back-btn').addEventListener('click',()=>{
+  if(cordUnsub){ cordUnsub(); cordUnsub=null; }
+  if(projUnsub){ projUnsub(); projUnsub=null; }
+  activeFolderId=null;
+  goTo('screen-home');
+});
+
+// ── CORDS TABLE ────────────────────────
+function renderCordsTable(cords){
+  const tbody=document.getElementById('cords-body');
+  const empty=document.getElementById('empty-cords');
+  const table=document.getElementById('cords-table');
+  tbody.innerHTML='';
+  if(!cords.length){ empty.style.display='block'; table.style.display='none'; return; }
+  empty.style.display='none'; table.style.display='';
+  cords.forEach((c,i)=>{
+    const tr=document.createElement('tr');
+    const icon = c.icon || '📍';
+    tr.innerHTML=`
+      <td style="color:var(--text-dim)">${i+1}</td>
+      <td><div class="cord-name-cell"><span class="cord-icon">${esc(icon)}</span><span>${esc(c.name)}</span></div></td>
+      <td class="coord-xyz">${c.x}</td>
+      <td class="coord-xyz coord-y">${c.y}</td>
+      <td class="coord-xyz">${c.z}</td>
+      <td><span class="dim-tag dim-${esc(c.dim)}">${dimLabel(c.dim)}</span></td>
+      <td style="color:var(--text-dim);font-size:7px">${esc(c.notes||'—')}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn blue edit-cord" data-id="${esc(c.id)}" style="padding:6px 10px;font-size:7px" title="Editar">✎</button>
+          <button class="btn red del-cord" data-id="${esc(c.id)}" style="padding:6px 10px;font-size:7px" title="Eliminar">✕</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.edit-cord').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const cord = currentCords.find(item => item.id === btn.dataset.id);
+      if(!cord) return;
+      editingCordId = cord.id;
+      document.getElementById('modal-cord-title').textContent = '✎ Editar Coordenada';
+      document.getElementById('cord-icon').value = cord.icon || '📍';
+      document.getElementById('cord-name').value = cord.name;
+      document.getElementById('cord-x').value = cord.x;
+      document.getElementById('cord-y').value = cord.y;
+      document.getElementById('cord-z').value = cord.z;
+      document.getElementById('cord-dim').value = cord.dim;
+      document.getElementById('cord-notes').value = cord.notes || '';
+      document.getElementById('modal-cord').classList.add('open');
+      setTimeout(()=>document.getElementById('cord-name').focus(),50);
+    });
+  });
+
+  tbody.querySelectorAll('.del-cord').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      await deleteDoc(doc(db,'folders/'+activeFolderId+'/cords/'+btn.dataset.id));
+      toast('🗑 Coordenada eliminada');
+    });
+  });
+}
+
+// ── MODAL CORD ─────────────────────────
+document.getElementById('add-cord-btn').addEventListener('click',()=>{
+  editingCordId = null;
+  document.getElementById('modal-cord-title').textContent = '📍 Guardar Coordenada';
+  ['cord-name','cord-x','cord-y','cord-z','cord-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cord-icon').value='📍';
+  document.getElementById('cord-dim').value='overworld';
+  document.getElementById('modal-cord').classList.add('open');
+  setTimeout(()=>document.getElementById('cord-name').focus(),50);
+});
+document.getElementById('cancel-cord').addEventListener('click',()=>document.getElementById('modal-cord').classList.remove('open'));
+document.getElementById('confirm-cord').addEventListener('click',saveCord);
+['cord-name','cord-x','cord-y','cord-z','cord-notes'].forEach(id=>
+  document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&saveCord()));
+
+async function saveCord(){
+  const icon=document.getElementById('cord-icon').value;
+  const name=document.getElementById('cord-name').value.trim();
+  const x=document.getElementById('cord-x').value.trim();
+  const y=document.getElementById('cord-y').value.trim();
+  const z=document.getElementById('cord-z').value.trim();
+  const dim=document.getElementById('cord-dim').value;
+  const notes=document.getElementById('cord-notes').value.trim();
+  if(!name){ document.getElementById('cord-name').focus(); return; }
+  if(x===''||y===''||z===''){
+    document.getElementById(x===''?'cord-x':y===''?'cord-y':'cord-z').focus(); return;
+  }
+
+  const data = {
+    icon, name, x:parseInt(x), y:parseInt(y), z:parseInt(z), dim, notes
+  };
+
+  if(editingCordId){
+    await updateDoc(doc(db,'folders/'+activeFolderId+'/cords/'+editingCordId), data);
+    toast('✎ Coordenada actualizada');
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db,'folders/'+activeFolderId+'/cords'), data);
+    toast('📍 Coordenada guardada');
+  }
+  editingCordId = null;
+  document.getElementById('modal-cord').classList.remove('open');
+}
+
+// ── PROJECTS GRID ──────────────────────
+function renderProjectsGrid(projects){
+  const grid=document.getElementById('projects-grid');
+  const empty=document.getElementById('empty-projects');
+  grid.innerHTML='';
+
+  if(!projects.length){ empty.style.display='block'; grid.style.display='none'; return; }
+  empty.style.display='none'; grid.style.display='';
+
+  projects.forEach(p=>{
+    const mats = p.materials ? p.materials.split(',').map(m=>m.trim()).filter(Boolean) : [];
+    const matsHtml = mats.length
+      ? `<div class="project-materials">
+           <div class="project-materials-title">🧱 Materiales</div>
+           <div class="mat-list">${mats.map(m=>`<span class="mat-tag">${esc(m)}</span>`).join('')}</div>
+         </div>` : '';
+
+    const linkHtml = p.link
+      ? `<div class="project-row"><span class="project-row-label">🔗 Link</span><span class="project-row-val"><a href="${esc(p.link)}" target="_blank" rel="noopener" class="project-link">Ver referencia ↗</a></span></div>` : '';
+
+    const notesHtml = p.notes
+      ? `<div class="project-row"><span class="project-row-label">📝 Notas</span><span class="project-row-val">${esc(p.notes)}</span></div>` : '';
+
+    const done = !!p.done;
+    const card=document.createElement('div');
+    card.className='project-card'+(done?' is-done':'');
+    card.innerHTML=`
+      <div class="project-card-header">
+        <div class="project-title">${esc(p.title)}</div>
+        <div class="project-actions">
+          <button class="project-btn edit" data-id="${esc(p.id)}" title="Editar proyecto">✎</button>
+          <button class="project-btn del" data-id="${esc(p.id)}" title="Eliminar proyecto">✕</button>
+        </div>
+      </div>
+      <div class="project-type-tag">${esc(p.type)}</div>
+      <div class="status-toggle${done?' done':''}" data-id="${esc(p.id)}" title="Cambiar estado">
+        <span class="status-dot"></span>
+        <span class="status-txt">${done?'✔ Acabado':'En progreso'}</span>
+      </div>
+      ${linkHtml}
+      ${notesHtml}
+      ${matsHtml}`;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.status-toggle').forEach(toggle=>{
+    toggle.addEventListener('click',async()=>{
+      const pid=toggle.dataset.id;
+      const projectCard=toggle.closest('.project-card');
+      const isDone = projectCard.classList.contains('is-done');
+      const newDoneState = !isDone;
+      
+      try {
+        await updateDoc(doc(db,'folders/'+activeFolderId+'/projects/'+pid), {
+          done: newDoneState
+        });
+        toast(newDoneState ? '✔ Proyecto marcado como acabado' : '⏳ Proyecto en progreso');
+      } catch(err) {
+        console.error(err);
+        toast('❌ Error al actualizar estado');
+      }
+    });
+  });
+
+  grid.querySelectorAll('.project-btn.edit').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const proj = currentProjects.find(item => item.id === btn.dataset.id);
+      if(!proj) return;
+      editingProjectId = proj.id;
+      document.getElementById('modal-project-title').textContent = '✎ Editar Proyecto';
+      document.getElementById('proj-title').value = proj.title;
+      document.getElementById('proj-type').value = proj.type;
+      document.getElementById('proj-done').value = proj.done ? 'true' : 'false';
+      document.getElementById('proj-link').value = proj.link || '';
+      document.getElementById('proj-notes').value = proj.notes || '';
+      document.getElementById('proj-mats').value = proj.materials || '';
+      document.getElementById('modal-project').classList.add('open');
+      setTimeout(()=>document.getElementById('proj-title').focus(),50);
+    });
+  });
+
+  grid.querySelectorAll('.project-btn.del').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('¿Eliminar este proyecto?')) return;
+      await deleteDoc(doc(db,'folders/'+activeFolderId+'/projects/'+btn.dataset.id));
+      toast('🗑 Proyecto eliminado');
+    });
+  });
+}
+
+// ── MODAL PROYECTO ─────────────────────
+document.getElementById('add-project-btn').addEventListener('click',()=>{
+  editingProjectId = null;
+  document.getElementById('modal-project-title').textContent = '🏗 Nuevo Proyecto';
+  ['proj-title','proj-link','proj-notes','proj-mats'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('proj-type').value='Casa';
+  document.getElementById('proj-done').value='false';
+  document.getElementById('modal-project').classList.add('open');
+  setTimeout(()=>document.getElementById('proj-title').focus(),50);
+});
+document.getElementById('cancel-project').addEventListener('click',()=>document.getElementById('modal-project').classList.remove('open'));
+document.getElementById('confirm-project').addEventListener('click',saveProject);
+document.getElementById('proj-title').addEventListener('keydown',e=>e.key==='Enter'&&saveProject());
+
+async function saveProject(){
+  const title=document.getElementById('proj-title').value.trim();
+  if(!title){ document.getElementById('proj-title').focus(); return; }
+  const type=document.getElementById('proj-type').value;
+  const done=document.getElementById('proj-done').value==='true';
+  const link=document.getElementById('proj-link').value.trim();
+  const notes=document.getElementById('proj-notes').value.trim();
+  const materials=document.getElementById('proj-mats').value.trim();
+
+  const data = {
+    title, type, done, link, notes, materials
+  };
+
+  if(editingProjectId){
+    await updateDoc(doc(db,'folders/'+activeFolderId+'/projects/'+editingProjectId), data);
+    toast('✎ Proyecto actualizado');
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db,'folders/'+activeFolderId+'/projects'), data);
+    toast('🏗 Proyecto guardado');
+  }
+  editingProjectId = null;
+  document.getElementById('modal-project').classList.remove('open');
+}
+
+// Cerrar modales con clic fuera
+document.querySelectorAll('.modal-overlay').forEach(o=>
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }));
+</script>
+</body>
+</html>
