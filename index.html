@@ -494,7 +494,8 @@ function renderFolders(folders){
     b.addEventListener('click',async e=>{
       e.stopPropagation();
       const fid=b.dataset.id;
-      if(!confirm('¿Eliminar este mundo?\nSe borrarán todas sus coordenadas y proyectos.')) return;
+      if(!confirm('¿Eliminar este mundo?
+Se borrarán todas sus coordenadas y proyectos.')) return;
       const [cs,ps]=await Promise.all([
         new Promise(res=>{ const u=onSnapshot(collection(db,'folders/'+fid+'/cords'),s=>{u();res(s);}); }),
         new Promise(res=>{ const u=onSnapshot(collection(db,'folders/'+fid+'/projects'),s=>{u();res(s);}); })
